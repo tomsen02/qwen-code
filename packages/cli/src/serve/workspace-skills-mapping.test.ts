@@ -56,4 +56,53 @@ describe('mapSkillConfigToStatus', () => {
     expect(status.model).toBe('gpt-4o');
     expect(status.extensionName).toBe('acme');
   });
+
+  it('does not set disabled when disabledSkillNames is omitted', () => {
+    const status = mapSkillConfigToStatus(makeSkill());
+    expect(status).not.toHaveProperty('disabled');
+    expect(status.status).toBe('ok');
+  });
+
+  it('marks a user-disabled skill with disabled: true and status disabled', () => {
+    const disabled = new Set(['review']);
+    const status = mapSkillConfigToStatus(makeSkill(), disabled);
+
+    expect(status.disabled).toBe(true);
+    expect(status.status).toBe('disabled');
+    expect(status.modelInvocable).toBe(true);
+  });
+
+  it('does not set disabled for skills not in the disabled set', () => {
+    const disabled = new Set(['other-skill']);
+    const status = mapSkillConfigToStatus(
+      makeSkill({ name: 'review' }),
+      disabled,
+    );
+
+    expect(status).not.toHaveProperty('disabled');
+    expect(status.status).toBe('ok');
+  });
+
+  it('matches disabled skill names case-insensitively', () => {
+    const disabled = new Set(['review']);
+    const status = mapSkillConfigToStatus(
+      makeSkill({ name: 'Review' }),
+      disabled,
+    );
+
+    expect(status.disabled).toBe(true);
+    expect(status.status).toBe('disabled');
+  });
+
+  it('sets disabled and preserves modelInvocable when both mechanisms apply', () => {
+    const disabled = new Set(['internal']);
+    const status = mapSkillConfigToStatus(
+      makeSkill({ name: 'internal', disableModelInvocation: true }),
+      disabled,
+    );
+
+    expect(status.disabled).toBe(true);
+    expect(status.modelInvocable).toBe(false);
+    expect(status.status).toBe('disabled');
+  });
 });

@@ -3892,11 +3892,12 @@ class QwenAgent implements Agent {
 
     try {
       const skills = await skillManager.listSkills();
+      const disabledNames = config.getDisabledSkillNames();
       return {
         v: STATUS_SCHEMA_VERSION,
         workspaceCwd: this.workspaceCwd(config),
         initialized: true,
-        skills: skills.map(mapSkillConfigToStatus),
+        skills: skills.map((s) => mapSkillConfigToStatus(s, disabledNames)),
       };
     } catch (error) {
       return {

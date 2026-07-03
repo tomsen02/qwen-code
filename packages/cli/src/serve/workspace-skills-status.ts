@@ -55,7 +55,9 @@ type SkillManagerConfigShim = Pick<
   'isSafeMode' | 'getBareMode' | 'getProjectRoot' | 'getActiveExtensions'
 >;
 
-export function createWorkspaceSkillsStatusProvider(): WorkspaceSkillsStatusProvider {
+export function createWorkspaceSkillsStatusProvider(
+  disabledSkillNamesProvider?: () => ReadonlySet<string>,
+): WorkspaceSkillsStatusProvider {
   // Reuse one SkillManager per workspace so repeat queries hit its in-memory
   // skills cache instead of re-scanning (and re-parsing frontmatter / compiling
   // globs for) every level on each call. This is a best-effort pre-child
@@ -63,12 +65,18 @@ export function createWorkspaceSkillsStatusProvider(): WorkspaceSkillsStatusProv
   // picked up until the daemon restarts — is acceptable: the live child
   // re-lists authoritatively once a session exists.
   const managers = new Map<string, SkillManager>();
-  return (workspaceCwd) => buildWorkspaceSkillsStatus(workspaceCwd, managers);
+  return (workspaceCwd) =>
+    buildWorkspaceSkillsStatus(
+      workspaceCwd,
+      managers,
+      disabledSkillNamesProvider,
+    );
 }
 
 async function buildWorkspaceSkillsStatus(
   workspaceCwd: string,
   managers: Map<string, SkillManager>,
+  disabledSkillNamesProvider?: () => ReadonlySet<string>,
 ): Promise<ServeWorkspaceSkillsStatus> {
   try {
     let skillManager = managers.get(workspaceCwd);
@@ -90,11 +98,21 @@ async function buildWorkspaceSkillsStatus(
       managers.set(workspaceCwd, skillManager);
     }
     const skills = await skillManager.listSkills();
+    let disabledNames: ReadonlySet<string> | undefined;
+    try {
+      disabledNames = disabledSkillNamesProvider?.();
+    } catch (err) {
+      writeStderrLine(
+        `qwen serve: failed to read disabled skill names for ${workspaceCwd}: ` +
+          `${err instanceof Error ? err.message : String(err)}; ` +
+          `proceeding with all skills enabled.`,
+      );
+    }
     return {
       v: STATUS_SCHEMA_VERSION,
       workspaceCwd,
       initialized: true,
-      skills: skills.map(mapSkillConfigToStatus),
+      skills: skills.map((s) => mapSkillConfigToStatus(s, disabledNames)),
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

@@ -208,4 +208,37 @@ describe('mapWorkspaceSkills', () => {
       },
     ]);
   });
+
+  it('filters out user-disabled skills', () => {
+    const status: DaemonWorkspaceSkillsStatus = {
+      v: 1,
+      workspaceCwd: '/ws',
+      initialized: true,
+      skills: [
+        {
+          kind: 'skill',
+          status: 'ok',
+          name: 'review',
+          description: 'Review PR',
+          level: 'bundled',
+          modelInvocable: true,
+        },
+        {
+          kind: 'skill',
+          status: 'disabled',
+          name: 'hidden',
+          description: 'Hidden skill',
+          level: 'user',
+          modelInvocable: true,
+          disabled: true,
+        },
+      ],
+    };
+
+    const result = mapWorkspaceSkills(status);
+
+    expect(result.skills).toEqual(['review']);
+    expect(result.commands).toHaveLength(1);
+    expect(result.commands[0].name).toBe('review');
+  });
 });

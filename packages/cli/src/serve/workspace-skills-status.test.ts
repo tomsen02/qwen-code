@@ -75,4 +75,29 @@ describe('createWorkspaceSkillsStatusProvider', () => {
     expect(listSpy).toHaveBeenCalledTimes(2);
     expect(listSpy.mock.instances[0]).toBe(listSpy.mock.instances[1]);
   });
+
+  it('marks user-disabled skills with disabled: true when a provider is given', async () => {
+    const provider = createWorkspaceSkillsStatusProvider(
+      () => new Set(['review']),
+    );
+
+    const status = await provider(process.cwd());
+
+    const review = status.skills.find((skill) => skill.name === 'review');
+    expect(review).toBeDefined();
+    expect(review?.disabled).toBe(true);
+    expect(review?.status).toBe('disabled');
+    // modelInvocable reflects the frontmatter, not the user's disabled state.
+    expect(review?.modelInvocable).toBe(true);
+  });
+
+  it('does not set disabled when no provider is given', async () => {
+    const provider = createWorkspaceSkillsStatusProvider();
+
+    const status = await provider(process.cwd());
+
+    const review = status.skills.find((skill) => skill.name === 'review');
+    expect(review).toBeDefined();
+    expect(review).not.toHaveProperty('disabled');
+  });
 });

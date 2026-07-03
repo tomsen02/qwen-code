@@ -2036,7 +2036,26 @@ export async function runQwenServe(
     const workspaceProvidersStatusProvider =
       runtime.createWorkspaceProvidersStatusProvider();
     const workspaceSkillsStatusProvider =
-      runtime.createWorkspaceSkillsStatusProvider();
+      runtime.createWorkspaceSkillsStatusProvider(() => {
+        try {
+          const fresh = settingsRuntime.settings.loadSettings(boundWorkspace);
+          const raw = fresh.merged.skills?.disabled;
+          const list = Array.isArray(raw) ? raw : [];
+          return new Set(
+            list
+              .filter((n): n is string => typeof n === 'string')
+              .map((n) => n.trim().toLowerCase())
+              .filter(Boolean),
+          );
+        } catch (err) {
+          writeStderrLine(
+            `qwen serve: could not read skills.disabled setting ` +
+              `(${err instanceof Error ? err.message : String(err)}); ` +
+              `treating all skills as enabled.`,
+          );
+          return new Set<string>();
+        }
+      });
     // Reverse tool channel (issue #5626, Phase 2). ONE sender registry shared
     // between the bridge (which answers the ACP child's `client_mcp/message`
     // ext-method via `clientMcpSender`) and the WS provider in `createServeApp`
