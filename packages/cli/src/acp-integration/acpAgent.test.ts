@@ -1636,6 +1636,7 @@ describe('QwenAgent MCP SSE/HTTP support', () => {
         .fn()
         .mockImplementation((name: string) => name === 'disabled'),
       getSkillManager: vi.fn().mockReturnValue({ listSkills }),
+      getDisabledSkillNames: vi.fn().mockReturnValue(new Set()),
       getAuthType: vi.fn().mockReturnValue('qwen'),
       getAllConfiguredModels: vi.fn().mockReturnValue([
         {
